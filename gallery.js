@@ -1,7 +1,47 @@
 const STORAGE_KEY = 'twitterBookmarks';
+const THEME_KEY = 'twitterBookmarksTheme';
+const GRID_SIZE_KEY = 'twitterBookmarksGridSize';
 
 let allTweets = [];
 let filteredTweets = [];
+
+// Theme toggle
+function initTheme() {
+  const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    document.querySelector('.theme-icon').textContent = '☀️';
+  }
+}
+
+// Grid size control
+function initGridSize() {
+  const savedSize = localStorage.getItem(GRID_SIZE_KEY) || '280';
+  const gallery = document.getElementById('gallery');
+  const slider = document.getElementById('gridSize');
+  const sizeLabel = document.getElementById('gridSizeValue');
+  
+  slider.value = savedSize;
+  sizeLabel.textContent = `${savedSize}px`;
+  gallery.style.setProperty('--grid-size', `${savedSize}px`);
+}
+
+document.getElementById('gridSize').addEventListener('input', (e) => {
+  const size = e.target.value;
+  const gallery = document.getElementById('gallery');
+  const sizeLabel = document.getElementById('gridSizeValue');
+  
+  sizeLabel.textContent = `${size}px`;
+  gallery.style.setProperty('--grid-size', `${size}px`);
+  localStorage.setItem(GRID_SIZE_KEY, size);
+});
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  document.body.classList.toggle('light-mode');
+  const isLight = document.body.classList.contains('light-mode');
+  localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
+  document.querySelector('.theme-icon').textContent = isLight ? '☀️' : '🌙';
+});
 
 // Load data from localStorage
 function loadData() {
@@ -282,6 +322,8 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 
 // Initialize
 function init() {
+  initTheme();
+  initGridSize();
   const data = loadData();
   allTweets = Object.values(data);
   filteredTweets = [...allTweets];

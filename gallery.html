@@ -9,8 +9,16 @@
 <body>
   <div class="header">
     <div class="header-content">
-      <h1>📚 Twitter Bookmarks Gallery</h1>
+      <h1>Twitter Bookmarks Gallery</h1>
       <div class="header-controls">
+        <button id="themeToggle" class="theme-toggle" title="Toggle theme">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <div class="grid-size-control">
+          <label for="gridSize">Grid Size:</label>
+          <input type="range" id="gridSize" min="150" max="400" value="280" step="10">
+          <span id="gridSizeValue">280px</span>
+        </div>
         <input type="text" id="searchInput" placeholder="Search by author or text...">
         <select id="sortSelect">
           <option value="newest">Newest First</option>

@@ -1,15 +1,22 @@
-# Twitter/X Bookmark Image Extractor
+# Twitter/X Bookmarks Gallery
 
-A simple Chrome extension that extracts images from Twitter/X bookmarks.
+A Chrome extension that extracts images from your Twitter/X bookmarks into gallery.
 
-## Files
-- `manifest.json` – extension metadata
-- `popup.html` – popup UI
-- `popup.js` – extraction logic
-- `popup.css` – styling
+## Features
 
-## Usage
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable Developer mode
-3. Click “Load unpacked” and select this folder
-4. Open the extension and click the button on your Twitter/X bookmarks page
+### Core Functionality
+- **Extract Images** from your Twitter/X bookmarks page
+- **Automatically Detects** and saves only new bookmarks (no duplicates)
+- **Captures Relevant Details**, including tweet author, text, links, and timestamps
+- **Image Links Only** – all saved locally in your browser
+
+### Backup & Restore
+
+- **Export:** Click "Export Data" to download a JSON backup file
+- **Import:** Click "Import Data" and select your JSON file to restore
+
+### Storage
+- Uses browser's localStorage (not the images themselves, just URLs and metadata)
+- Typical storage: ~500-800 bytes per bookmark
+- 1000 bookmarks = ~500KB-1MB storage
+- Browser limit: 5-10MB (enough for thousands of bookmarks)
