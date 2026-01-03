@@ -213,6 +213,62 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
+// Import data
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const importedData = JSON.parse(event.target.result);
+      
+      if (typeof importedData !== 'object') {
+        throw new Error('Invalid data format');
+      }
+      
+      const existingData = loadData();
+      
+      let newCount = 0;
+      let updatedCount = 0;
+      
+      Object.keys(importedData).forEach(tweetId => {
+        if (existingData[tweetId]) {
+          updatedCount++;
+        } else {
+          newCount++;
+        }
+        existingData[tweetId] = importedData[tweetId];
+      });
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(existingData));
+      
+      // Refresh the view
+      allTweets = Object.values(existingData);
+      filteredTweets = [...allTweets];
+      applySorting();
+      updateStats();
+      
+      alert(`Import successful!\n✅ ${newCount} new tweets\n🔄 ${updatedCount} updated`);
+      
+      e.target.value = '';
+      
+    } catch (error) {
+      alert(`Import failed: ${error.message}`);
+    }
+  };
+  
+  reader.onerror = () => {
+    alert('Failed to read file');
+  };
+  
+  reader.readAsText(file);
+});
+
 // Clear all data
 document.getElementById('clearBtn').addEventListener('click', () => {
   if (confirm('Are you sure you want to clear all saved bookmarks? This cannot be undone.')) {

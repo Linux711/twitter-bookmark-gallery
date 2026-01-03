@@ -84,6 +84,14 @@ button:hover {
   background: #1a8cd8;
 }
 
+#importBtn {
+  background: #ff6b35;
+}
+
+#importBtn:hover {
+  background: #e55a2b;
+}
+
 #clearBtn {
   background: #f4212e;
 }

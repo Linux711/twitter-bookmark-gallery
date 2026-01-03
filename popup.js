@@ -190,18 +190,67 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   statusDiv.textContent = 'Exported successfully!';
 });
 
-// Clear button
-document.getElementById('clearBtn').addEventListener('click', () => {
-  if (confirm('Are you sure you want to clear all saved bookmarks?')) {
-    localStorage.removeItem(STORAGE_KEY);
-    lastExtractedData = [];
-    document.getElementById('gallery').innerHTML = '';
-    updateStats();
-    
-    const statusDiv = document.getElementById('status');
-    statusDiv.className = 'success';
-    statusDiv.textContent = 'All data cleared.';
-  }
+// Import button
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const statusDiv = document.getElementById('status');
+  statusDiv.className = 'loading';
+  statusDiv.textContent = 'Importing data...';
+  
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const importedData = JSON.parse(event.target.result);
+      
+      // Validate the data structure
+      if (typeof importedData !== 'object') {
+        throw new Error('Invalid data format');
+      }
+      
+      // Get existing data
+      const existingData = loadSavedData();
+      
+      // Merge: imported data overwrites existing for same tweet IDs
+      let newCount = 0;
+      let updatedCount = 0;
+      
+      Object.keys(importedData).forEach(tweetId => {
+        if (existingData[tweetId]) {
+          updatedCount++;
+        } else {
+          newCount++;
+        }
+        existingData[tweetId] = importedData[tweetId];
+      });
+      
+      // Save merged data
+      saveData(existingData);
+      updateStats();
+      
+      statusDiv.className = 'success';
+      statusDiv.innerHTML = `Import successful!<br>✅ ${newCount} new tweets | 🔄 ${updatedCount} updated`;
+      
+      // Reset file input
+      e.target.value = '';
+      
+    } catch (error) {
+      statusDiv.className = 'error';
+      statusDiv.textContent = `Import failed: ${error.message}`;
+    }
+  };
+  
+  reader.onerror = () => {
+    statusDiv.className = 'error';
+    statusDiv.textContent = 'Failed to read file';
+  };
+  
+  reader.readAsText(file);
 });
 
 // Initialize on load
@@ -226,10 +275,48 @@ function extractBookmarks() {
       if (!tweetId || seenIds.has(tweetId)) return;
       seenIds.add(tweetId);
       
-      // Get author info
-      const authorLink = article.querySelector('a[href^="/"][href*="/status/"]:not([href*="/status/"])');
-      const author = authorLink?.href.split('/')[3] || 'unknown';
-      const authorUrl = `https://twitter.com/${author}`;
+      // Get author info - multiple fallback strategies
+      let author = 'unknown';
+      let authorUrl = '';
+      
+      // Strategy 1: Look in User-Name test ID for the username
+      const userNameDiv = article.querySelector('[data-testid="User-Name"]');
+      if (userNameDiv) {
+        // Get the second link (first is display name, second is @username)
+        const links = userNameDiv.querySelectorAll('a[href^="/"]');
+        if (links.length >= 2) {
+          const usernameLink = links[1];
+          const href = usernameLink.href;
+          const match = href.match(/(?:twitter\.com|x\.com)\/([^/?]+)/);
+          if (match && match[1]) {
+            author = match[1];
+            authorUrl = `https://twitter.com/${author}`;
+          }
+        }
+      }
+      
+      // Strategy 2: Look for the @username in text content
+      if (author === 'unknown' && userNameDiv) {
+        const usernameText = userNameDiv.textContent.match(/@(\w+)/);
+        if (usernameText && usernameText[1]) {
+          author = usernameText[1];
+          authorUrl = `https://twitter.com/${author}`;
+        }
+      }
+      
+      // Strategy 3: Find any profile link (not status link)
+      if (author === 'unknown') {
+        const profileLinks = article.querySelectorAll('a[href^="/"]:not([href*="/status/"]):not([href*="/photo/"]):not([href*="/hashtag/"])');
+        for (const link of profileLinks) {
+          const href = link.href;
+          const match = href.match(/(?:twitter\.com|x\.com)\/([^/?]+)$/);
+          if (match && match[1] && match[1] !== 'i' && match[1] !== 'home') {
+            author = match[1];
+            authorUrl = `https://twitter.com/${author}`;
+            break;
+          }
+        }
+      }
       
       // Get tweet text
       const textElement = article.querySelector('[data-testid="tweetText"]');

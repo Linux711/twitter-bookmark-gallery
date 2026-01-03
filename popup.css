@@ -54,6 +54,15 @@ button:hover {
   background: #6344dd;
 }
 
+#importBtn {
+  background: #ffad1f;
+  color: #15202b;
+}
+
+#importBtn:hover {
+  background: #e6951c;
+}
+
 #openGalleryBtn {
   background: #00ba7c;
 }
