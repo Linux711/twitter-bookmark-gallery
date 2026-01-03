@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twitter Bookmarks Gallery</title>
+  <link rel="stylesheet" href="gallery.css">
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <h1>📚 Twitter Bookmarks Gallery</h1>
+      <div class="header-controls">
+        <input type="text" id="searchInput" placeholder="Search by author or text...">
+        <select id="sortSelect">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="author">By Author</option>
+        </select>
+        <button id="exportBtn">Export Data</button>
+        <button id="clearBtn">Clear All</button>
+      </div>
+    </div>
+    <div class="stats-bar">
+      <span id="totalCount">0 tweets</span>
+      <span id="imageCount">0 images</span>
+      <span id="filteredCount"></span>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div id="gallery"></div>
+  </div>
+
+  <div id="lightbox" class="lightbox">
+    <span class="lightbox-close">&times;</span>
+    <img class="lightbox-content" id="lightboxImg">
+    <div class="lightbox-info">
+      <a id="lightboxTweet" target="_blank">View Tweet</a>
+      <a id="lightboxImage" target="_blank">Open Full Image</a>
+      <a id="lightboxAuthor" target="_blank">View Author</a>
+    </div>
+  </div>
+
+  <script src="gallery.js"></script>
+</body>
+</html>

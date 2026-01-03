@@ -8,9 +8,18 @@
   <div class="container">
     <div class="header">
       <h1>Twitter Bookmarks Gallery</h1>
-      <button id="extractBtn">Extract Images</button>
+      <div class="header-buttons">
+        <button id="extractBtn">Extract Images</button>
+        <button id="openGalleryBtn">Open Full Gallery</button>
+        <button id="exportBtn">Export Data</button>
+      </div>
     </div>
     <div id="status"></div>
+    <div id="stats"></div>
+    <div class="view-toggle">
+      <button id="viewCurrentBtn" class="active">Current Extract</button>
+      <button id="viewAllBtn">All Saved ({count})</button>
+    </div>
     <div id="gallery"></div>
   </div>
   <script src="popup.js"></script>
