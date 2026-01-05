@@ -117,6 +117,35 @@ h1 {
   font-weight: bold;
 }
 
+.view-toggle-btn {
+  width: 45px;
+  height: 45px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.view-toggle-btn:hover {
+  border-color: var(--accent-primary);
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px var(--shadow-color);
+}
+
+.view-toggle-btn.active {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-color: var(--accent-primary);
+}
+
+#viewToggleIcon {
+  font-size: 20px;
+}
+
 .header-controls {
   display: flex;
   gap: 10px;
@@ -286,6 +315,19 @@ button:hover {
 
 .gallery-info {
   padding: 15px;
+  transition: all 0.3s ease;
+}
+
+body.compact-view .gallery-item .gallery-info {
+  display: none !important;
+}
+
+body.compact-view .gallery-item {
+  border-radius: 8px;
+}
+
+body.compact-view .gallery-item .gallery-image {
+  border-radius: 8px;
 }
 
 .author {
@@ -452,6 +494,17 @@ button:hover {
   background: rgba(255, 20, 147, 0.2);
   border-color: var(--accent-primary);
   transform: translateY(-2px);
+}
+
+.delete-link {
+  background: rgba(255, 107, 107, 0.2) !important;
+  color: #ff6b6b !important;
+  border-color: rgba(255, 107, 107, 0.4) !important;
+}
+
+.delete-link:hover {
+  background: rgba(255, 107, 107, 0.3) !important;
+  border-color: #ff6b6b !important;
 }
 
 /* Responsive */

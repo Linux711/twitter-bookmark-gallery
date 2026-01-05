@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'twitterBookmarks';
 const THEME_KEY = 'twitterBookmarksTheme';
 const GRID_SIZE_KEY = 'twitterBookmarksGridSize';
+const COMPACT_VIEW_KEY = 'twitterBookmarksCompactView';
 
 let allTweets = [];
 let filteredTweets = [];
@@ -12,6 +13,23 @@ function initTheme() {
     document.body.classList.add('light-mode');
     document.querySelector('.theme-icon').textContent = '☀️';
   }
+}
+
+// Compact view toggle
+function initCompactView() {
+  const isCompact = localStorage.getItem(COMPACT_VIEW_KEY) === 'true';
+  if (isCompact) {
+    document.body.classList.add('compact-view');
+    document.getElementById('viewToggle').classList.add('active');
+  }
+  
+  // Add event listener here after we know the element exists
+  document.getElementById('viewToggle').addEventListener('click', () => {
+    document.body.classList.toggle('compact-view');
+    const isCompact = document.body.classList.contains('compact-view');
+    document.getElementById('viewToggle').classList.toggle('active', isCompact);
+    localStorage.setItem(COMPACT_VIEW_KEY, isCompact);
+  });
 }
 
 // Grid size control
@@ -189,6 +207,16 @@ function openLightbox(imgUrl, tweet) {
   document.getElementById('lightboxTweet').href = tweet.tweetUrl;
   document.getElementById('lightboxImage').href = imgUrl;
   document.getElementById('lightboxAuthor').href = tweet.authorUrl;
+  
+  // Set up delete button
+  const deleteBtn = document.getElementById('lightboxDelete');
+  deleteBtn.onclick = (e) => {
+    e.preventDefault();
+    if (confirm('Delete this bookmark? This cannot be undone.')) {
+      deleteTweet(tweet.tweetId);
+      lightbox.classList.remove('active');
+    }
+  };
 }
 
 // Close lightbox
@@ -320,10 +348,28 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   }
 });
 
+// Delete individual tweet
+function deleteTweet(tweetId) {
+  const data = loadData();
+  delete data[tweetId];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  
+  // Update arrays
+  allTweets = Object.values(data);
+  filteredTweets = allTweets.filter(tweet => 
+    filteredTweets.some(ft => ft.tweetId === tweet.tweetId)
+  );
+  
+  // Re-render
+  applySorting();
+  updateStats();
+}
+
 // Initialize
 function init() {
   initTheme();
   initGridSize();
+  initCompactView();
   const data = loadData();
   allTweets = Object.values(data);
   filteredTweets = [...allTweets];
