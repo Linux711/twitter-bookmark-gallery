@@ -1,28 +1,34 @@
-// Storage key
-const STORAGE_KEY = 'twitterBookmarks';
+// ============================================================
+//  popup.js — Extension UI
+//  Communicates with content.js via messages.
+//  Does NOT inject its own extraction logic into the page.
+// ============================================================
 
-// Current view state
-let currentView = 'current';
+const STORAGE_KEY     = 'twitterBookmarks';
+const AUTO_EXTRACT_KEY = 'twitterBookmarksAutoExtract';
+
+let currentView      = 'current';
 let lastExtractedData = [];
 
-// Load saved data from localStorage
-function loadSavedData() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : {};
+// ── Storage helpers ──────────────────────────────────────────
+
+async function loadSavedData() {
+  const result = await chrome.storage.local.get(STORAGE_KEY);
+  return result[STORAGE_KEY] || {};
 }
 
-// Save data to localStorage
-function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+async function saveData(data) {
+  await chrome.storage.local.set({ [STORAGE_KEY]: data });
 }
 
-// Update stats display
-function updateStats() {
-  const saved = loadSavedData();
+// ── Stats ────────────────────────────────────────────────────
+
+async function updateStats() {
+  const saved = await loadSavedData();
   const count = Object.keys(saved).length;
-  
+
   document.getElementById('viewAllBtn').textContent = `All Saved (${count})`;
-  
+
   if (count > 0) {
     const statsDiv = document.getElementById('stats');
     statsDiv.innerHTML = `
@@ -32,21 +38,22 @@ function updateStats() {
   }
 }
 
-// Render gallery
+// ── Gallery renderer ─────────────────────────────────────────
+
 function renderGallery(tweets, showSavedBadge = false) {
   const gallery = document.getElementById('gallery');
   gallery.innerHTML = '';
-  
+
   if (tweets.length === 0) {
     gallery.innerHTML = '<div style="text-align: center; color: #8899a6; padding: 40px;">No tweets to display</div>';
     return;
   }
-  
+
   tweets.forEach(tweet => {
-    tweet.images.forEach((imgUrl, idx) => {
+    tweet.images.forEach(imgUrl => {
       const item = document.createElement('div');
       item.className = 'gallery-item';
-      
+
       item.innerHTML = `
         <div class="gallery-image">
           <img src="${imgUrl}" alt="Tweet image" loading="lazy">
@@ -63,100 +70,92 @@ function renderGallery(tweets, showSavedBadge = false) {
           </div>
         </div>
       `;
-      
-      // Click image to open full size
+
       item.querySelector('.gallery-image img').addEventListener('click', () => {
         window.open(imgUrl, '_blank');
       });
-      
+
       gallery.appendChild(item);
     });
   });
 }
 
-// Extract button
+// ── Extract button (manual, one-shot) ────────────────────────
+
 document.getElementById('extractBtn').addEventListener('click', async () => {
   const statusDiv = document.getElementById('status');
-  const gallery = document.getElementById('gallery');
-  
-  statusDiv.className = 'loading';
+  const gallery   = document.getElementById('gallery');
+
+  statusDiv.className   = 'loading';
   statusDiv.textContent = 'Extracting bookmarks...';
-  gallery.innerHTML = '';
-  
+  gallery.innerHTML     = '';
+
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
+
     if (!tab.url.includes('/bookmarks')) {
-      statusDiv.className = 'error';
+      statusDiv.className   = 'error';
       statusDiv.textContent = 'Please navigate to your Twitter/X bookmarks page first!';
       return;
     }
-    
+
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: extractBookmarks
+      func: extractBookmarks,
     });
-    
+
     const extractedTweets = results[0].result;
-    
+
     if (extractedTweets.length === 0) {
-      statusDiv.className = 'error';
+      statusDiv.className   = 'error';
       statusDiv.textContent = 'No bookmarks found. Try scrolling to load more.';
       return;
     }
-    
-    // Load existing data
-    const savedData = loadSavedData();
-    
-    // Check for new vs existing
+
+    const savedData = await loadSavedData();
     let newCount = 0;
     let existingCount = 0;
-    
+
     extractedTweets.forEach(tweet => {
       if (!savedData[tweet.tweetId]) {
-        savedData[tweet.tweetId] = {
-          ...tweet,
-          savedAt: new Date().toISOString()
-        };
+        savedData[tweet.tweetId] = { ...tweet, savedAt: new Date().toISOString() };
         newCount++;
       } else {
         existingCount++;
       }
     });
-    
-    // Save updated data
-    saveData(savedData);
-    
-    // Show results
+
+    await saveData(savedData);
+
     statusDiv.className = 'success';
     statusDiv.innerHTML = `
       Found ${extractedTweets.length} tweets:<br>
       ✅ ${newCount} new | ⏭️ ${existingCount} already saved
     `;
-    
-    // Store and display current extraction
+
     lastExtractedData = extractedTweets;
     renderGallery(extractedTweets, existingCount > 0);
-    updateStats();
-    
-    // Switch to current view
+    await updateStats();
+
     currentView = 'current';
     document.getElementById('viewCurrentBtn').classList.add('active');
     document.getElementById('viewAllBtn').classList.remove('active');
-    
+
   } catch (error) {
-    statusDiv.className = 'error';
+    statusDiv.className   = 'error';
     statusDiv.textContent = `Error: ${error.message}`;
     console.error(error);
   }
 });
 
-// Open full gallery button
+// ── Open full gallery ────────────────────────────────────────
+
 document.getElementById('openGalleryBtn').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('gallery.html') });
 });
 
-// View toggle buttons
+// ── View toggle ──────────────────────────────────────────────
+
 document.getElementById('viewCurrentBtn').addEventListener('click', () => {
   currentView = 'current';
   document.getElementById('viewCurrentBtn').classList.add('active');
@@ -164,198 +163,214 @@ document.getElementById('viewCurrentBtn').addEventListener('click', () => {
   renderGallery(lastExtractedData);
 });
 
-document.getElementById('viewAllBtn').addEventListener('click', () => {
+document.getElementById('viewAllBtn').addEventListener('click', async () => {
   currentView = 'all';
   document.getElementById('viewAllBtn').classList.add('active');
   document.getElementById('viewCurrentBtn').classList.remove('active');
-  
-  const savedData = loadSavedData();
-  const allTweets = Object.values(savedData);
+
+  const savedData  = await loadSavedData();
+  const allTweets  = Object.values(savedData);
   renderGallery(allTweets, true);
 });
 
-// Export button
-document.getElementById('exportBtn').addEventListener('click', () => {
-  const data = loadSavedData();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `twitter-bookmarks-${new Date().toISOString().split('T')[0]}.json`;
+// ── Export ───────────────────────────────────────────────────
+
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const data = await loadSavedData();
+  const blob  = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href      = url;
+  a.download  = `twitter-bookmarks-${new Date().toISOString().split('T')[0]}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  
-  const statusDiv = document.getElementById('status');
-  statusDiv.className = 'success';
+
+  const statusDiv       = document.getElementById('status');
+  statusDiv.className   = 'success';
   statusDiv.textContent = 'Exported successfully!';
 });
 
-// Import button
+// ── Import ───────────────────────────────────────────────────
+
 document.getElementById('importBtn').addEventListener('click', () => {
   document.getElementById('importFile').click();
 });
 
-document.getElementById('importFile').addEventListener('change', (e) => {
-  const file = e.target.files[0];
+document.getElementById('importFile').addEventListener('change', async (e) => {
+  const file      = e.target.files[0];
   if (!file) return;
-  
-  const statusDiv = document.getElementById('status');
-  statusDiv.className = 'loading';
+
+  const statusDiv       = document.getElementById('status');
+  statusDiv.className   = 'loading';
   statusDiv.textContent = 'Importing data...';
-  
-  const reader = new FileReader();
-  reader.onload = (event) => {
+
+  const reader    = new FileReader();
+  reader.onload   = async (event) => {
     try {
       const importedData = JSON.parse(event.target.result);
-      
-      // Validate the data structure
-      if (typeof importedData !== 'object') {
-        throw new Error('Invalid data format');
-      }
-      
-      // Get existing data
-      const existingData = loadSavedData();
-      
-      // Merge: imported data overwrites existing for same tweet IDs
+
+      if (typeof importedData !== 'object') throw new Error('Invalid data format');
+
+      const existingData = await loadSavedData();
       let newCount = 0;
       let updatedCount = 0;
-      
+
       Object.keys(importedData).forEach(tweetId => {
-        if (existingData[tweetId]) {
-          updatedCount++;
-        } else {
-          newCount++;
-        }
+        if (existingData[tweetId]) updatedCount++;
+        else newCount++;
         existingData[tweetId] = importedData[tweetId];
       });
-      
-      // Save merged data
-      saveData(existingData);
-      updateStats();
-      
+
+      await saveData(existingData);
+      await updateStats();
+
       statusDiv.className = 'success';
       statusDiv.innerHTML = `Import successful!<br>✅ ${newCount} new tweets | 🔄 ${updatedCount} updated`;
-      
-      // Reset file input
+
       e.target.value = '';
-      
+
     } catch (error) {
-      statusDiv.className = 'error';
+      statusDiv.className   = 'error';
       statusDiv.textContent = `Import failed: ${error.message}`;
     }
   };
-  
+
   reader.onerror = () => {
-    statusDiv.className = 'error';
+    statusDiv.className   = 'error';
     statusDiv.textContent = 'Failed to read file';
   };
-  
+
   reader.readAsText(file);
 });
 
-// Initialize on load
+// ── Auto-extract toggle ──────────────────────────────────────
+//  The popup only sends messages. content.js owns the scroll loop.
+
+const autoExtractToggle = document.getElementById('autoExtractToggle');
+autoExtractToggle.checked = localStorage.getItem(AUTO_EXTRACT_KEY) === 'true';
+
+autoExtractToggle.addEventListener('change', async (e) => {
+  const isEnabled = e.target.checked;
+  localStorage.setItem(AUTO_EXTRACT_KEY, String(isEnabled));
+
+  const [tab]     = await chrome.tabs.query({ active: true, currentWindow: true });
+  const statusDiv = document.getElementById('status');
+
+  if (!tab.url.includes('/bookmarks')) {
+    statusDiv.className   = 'error';
+    statusDiv.textContent = 'Please navigate to your Twitter/X bookmarks page to use auto-extract.';
+    autoExtractToggle.checked = false;
+    return;
+  }
+
+  // Hand off to content.js — it runs the scroll loop
+  chrome.tabs.sendMessage(
+    tab.id,
+    { type: isEnabled ? 'START_AUTO_EXTRACT' : 'STOP_AUTO_EXTRACT' },
+    () => {
+      statusDiv.className   = 'success';
+      statusDiv.textContent = isEnabled
+        ? '✅ Auto-extract enabled! Page will scroll automatically.'
+        : 'Auto-extract disabled.';
+    }
+  );
+});
+
+// On popup open, sync the toggle with what content.js is actually doing
+(async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab.url.includes('/bookmarks')) {
+    chrome.tabs.sendMessage(tab.id, { type: 'CHECK_AUTO_EXTRACT' }, (response) => {
+      if (response) autoExtractToggle.checked = response.running;
+    });
+  }
+})();
+
+// ── Auto-extract finished listener ───────────────────────────
+//  content.js sends this when the scroll loop completes naturally
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'AUTO_EXTRACT_FINISHED') {
+    autoExtractToggle.checked = false;
+    localStorage.setItem(AUTO_EXTRACT_KEY, 'false');
+
+    const statusDiv       = document.getElementById('status');
+    statusDiv.className   = 'success';
+    statusDiv.textContent = `✅ Auto-extract complete! Collected ${message.total} bookmarks.`;
+
+    updateStats();
+  }
+});
+
+// ── Initialize ───────────────────────────────────────────────
+
 updateStats();
 
-// Function that runs in Twitter page context
+// ── extractBookmarks (injected for manual one-shot extract) ──
+//  This is ONLY used by the manual Extract button above.
+//  Auto-extract uses content.js exclusively.
+
 function extractBookmarks() {
-  const tweets = [];
+  const tweets  = [];
   const seenIds = new Set();
-  
-  // Find all tweet articles
-  const articles = document.querySelectorAll('article[data-testid="tweet"]');
-  
-  articles.forEach(article => {
+
+  document.querySelectorAll('article[data-testid="tweet"]').forEach(article => {
     try {
-      // Get tweet URL and ID
       const tweetLink = article.querySelector('a[href*="/status/"]');
       if (!tweetLink) return;
-      
+
       const tweetUrl = tweetLink.href;
-      const tweetId = tweetUrl.match(/status\/(\d+)/)?.[1];
+      const tweetId  = tweetUrl.match(/status\/(\d+)/)?.[1];
       if (!tweetId || seenIds.has(tweetId)) return;
       seenIds.add(tweetId);
-      
-      // Get author info - multiple fallback strategies
-      let author = 'unknown';
+
+      let author    = 'unknown';
       let authorUrl = '';
-      
-      // Strategy 1: Look in User-Name test ID for the username
+
       const userNameDiv = article.querySelector('[data-testid="User-Name"]');
       if (userNameDiv) {
-        // Get the second link (first is display name, second is @username)
         const links = userNameDiv.querySelectorAll('a[href^="/"]');
         if (links.length >= 2) {
-          const usernameLink = links[1];
-          const href = usernameLink.href;
-          const match = href.match(/(?:twitter\.com|x\.com)\/([^/?]+)/);
-          if (match && match[1]) {
-            author = match[1];
-            authorUrl = `https://twitter.com/${author}`;
-          }
+          const match = links[1].href.match(/(?:twitter\.com|x\.com)\/([^/?]+)/);
+          if (match?.[1]) { author = match[1]; authorUrl = `https://twitter.com/${author}`; }
+        }
+        if (author === 'unknown') {
+          const usernameText = userNameDiv.textContent.match(/@(\w+)/);
+          if (usernameText?.[1]) { author = usernameText[1]; authorUrl = `https://twitter.com/${author}`; }
         }
       }
-      
-      // Strategy 2: Look for the @username in text content
-      if (author === 'unknown' && userNameDiv) {
-        const usernameText = userNameDiv.textContent.match(/@(\w+)/);
-        if (usernameText && usernameText[1]) {
-          author = usernameText[1];
-          authorUrl = `https://twitter.com/${author}`;
-        }
-      }
-      
-      // Strategy 3: Find any profile link (not status link)
+
       if (author === 'unknown') {
-        const profileLinks = article.querySelectorAll('a[href^="/"]:not([href*="/status/"]):not([href*="/photo/"]):not([href*="/hashtag/"])');
+        const profileLinks = article.querySelectorAll(
+          'a[href^="/"]:not([href*="/status/"]):not([href*="/photo/"]):not([href*="/hashtag/"])'
+        );
         for (const link of profileLinks) {
-          const href = link.href;
-          const match = href.match(/(?:twitter\.com|x\.com)\/([^/?]+)$/);
-          if (match && match[1] && match[1] !== 'i' && match[1] !== 'home') {
-            author = match[1];
-            authorUrl = `https://twitter.com/${author}`;
-            break;
+          const match = link.href.match(/(?:twitter\.com|x\.com)\/([^/?]+)$/);
+          if (match?.[1] && match[1] !== 'i' && match[1] !== 'home') {
+            author = match[1]; authorUrl = `https://twitter.com/${author}`; break;
           }
         }
       }
-      
-      // Get tweet text
-      const textElement = article.querySelector('[data-testid="tweetText"]');
-      const text = textElement?.textContent || '';
-      
-      // Get all images
+
+      const text   = article.querySelector('[data-testid="tweetText"]')?.textContent || '';
       const images = [];
-      const imgElements = article.querySelectorAll('img[src*="media"]');
-      
-      imgElements.forEach(img => {
+
+      article.querySelectorAll('img[src*="media"]').forEach(img => {
         let src = img.src;
-        
-        // Get highest quality version
         if (src.includes('pbs.twimg.com/media')) {
           src = src.split('?')[0] + '?format=jpg&name=large';
-          
-          // Avoid profile pictures
-          if (!images.includes(src)) {
-            images.push(src);
-          }
+          if (!images.includes(src)) images.push(src);
         }
       });
-      
-      // Only add if has images
+
       if (images.length > 0) {
-        tweets.push({
-          tweetId,
-          tweetUrl,
-          author,
-          authorUrl,
-          text: text.substring(0, 200), // Truncate long tweets
-          images
-        });
+        tweets.push({ tweetId, tweetUrl, author, authorUrl, text: text.substring(0, 200), images });
       }
-      
-    } catch (error) {
-      console.error('Error parsing tweet:', error);
+
+    } catch (err) {
+      console.error('Error parsing tweet:', err);
     }
   });
-  
+
   return tweets;
 }

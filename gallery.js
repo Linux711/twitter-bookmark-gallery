@@ -61,10 +61,10 @@ document.getElementById('themeToggle').addEventListener('click', () => {
   document.querySelector('.theme-icon').textContent = isLight ? '☀️' : '🌙';
 });
 
-// Load data from localStorage
-function loadData() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : {};
+// Load data from chrome.storage
+async function loadData() {
+  const result = await chrome.storage.local.get(STORAGE_KEY);
+  return result[STORAGE_KEY] || {};
 }
 
 // Update stats
@@ -270,8 +270,8 @@ function applySorting() {
 }
 
 // Export data
-document.getElementById('exportBtn').addEventListener('click', () => {
-  const data = loadData();
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const data = await loadData();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -286,12 +286,12 @@ document.getElementById('importBtn').addEventListener('click', () => {
   document.getElementById('importFile').click();
 });
 
-document.getElementById('importFile').addEventListener('change', (e) => {
+document.getElementById('importFile').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   
   const reader = new FileReader();
-  reader.onload = (event) => {
+  reader.onload = async (event) => {
     try {
       const importedData = JSON.parse(event.target.result);
       
@@ -299,7 +299,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
         throw new Error('Invalid data format');
       }
       
-      const existingData = loadData();
+      const existingData = await loadData();
       
       let newCount = 0;
       let updatedCount = 0;
@@ -313,7 +313,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
         existingData[tweetId] = importedData[tweetId];
       });
       
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(existingData));
+      await chrome.storage.local.set({ [STORAGE_KEY]: existingData });
       
       // Refresh the view
       allTweets = Object.values(existingData);
@@ -338,9 +338,9 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 });
 
 // Clear all data
-document.getElementById('clearBtn').addEventListener('click', () => {
+document.getElementById('clearBtn').addEventListener('click', async () => {
   if (confirm('Are you sure you want to clear all saved bookmarks? This cannot be undone.')) {
-    localStorage.removeItem(STORAGE_KEY);
+    await chrome.storage.local.remove(STORAGE_KEY);
     allTweets = [];
     filteredTweets = [];
     renderGallery([]);
@@ -349,10 +349,10 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 });
 
 // Delete individual tweet
-function deleteTweet(tweetId) {
-  const data = loadData();
+async function deleteTweet(tweetId) {
+  const data = await loadData();
   delete data[tweetId];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  await chrome.storage.local.set({ [STORAGE_KEY]: data });
   
   // Update arrays
   allTweets = Object.values(data);
@@ -366,11 +366,11 @@ function deleteTweet(tweetId) {
 }
 
 // Initialize
-function init() {
+async function init() {
   initTheme();
   initGridSize();
   initCompactView();
-  const data = loadData();
+  const data = await loadData();
   allTweets = Object.values(data);
   filteredTweets = [...allTweets];
   
