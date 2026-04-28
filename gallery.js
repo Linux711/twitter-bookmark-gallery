@@ -32,26 +32,28 @@ function initCompactView() {
   });
 }
 
-// Grid size control
-function initGridSize() {
-  const savedSize = localStorage.getItem(GRID_SIZE_KEY) || '280';
+// Column count control
+function initColumnCount() {
+  const savedCount = localStorage.getItem(GRID_SIZE_KEY) || '4';
   const gallery = document.getElementById('gallery');
   const slider = document.getElementById('gridSize');
   const sizeLabel = document.getElementById('gridSizeValue');
   
-  slider.value = savedSize;
-  sizeLabel.textContent = `${savedSize}px`;
-  gallery.style.setProperty('--grid-size', `${savedSize}px`);
+  slider.value = savedCount;
+  slider.min = '1';
+  slider.max = '6';
+  sizeLabel.textContent = `${savedCount} columns`;
+  gallery.style.setProperty('column-count', savedCount);
 }
 
 document.getElementById('gridSize').addEventListener('input', (e) => {
-  const size = e.target.value;
+  const count = e.target.value;
   const gallery = document.getElementById('gallery');
   const sizeLabel = document.getElementById('gridSizeValue');
   
-  sizeLabel.textContent = `${size}px`;
-  gallery.style.setProperty('--grid-size', `${size}px`);
-  localStorage.setItem(GRID_SIZE_KEY, size);
+  sizeLabel.textContent = `${count} columns`;
+  gallery.style.setProperty('column-count', count);
+  localStorage.setItem(GRID_SIZE_KEY, count);
 });
 
 document.getElementById('themeToggle').addEventListener('click', () => {
@@ -386,7 +388,7 @@ async function deleteTweet(tweetId) {
 // Initialize
 async function init() {
   initTheme();
-  initGridSize();
+  initColumnCount();
   initCompactView();
   const data = await loadData();
   allTweets = Object.values(data);
