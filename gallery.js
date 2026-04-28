@@ -138,6 +138,15 @@ function renderGallery(tweets) {
       openLightbox(firstImage, tweet);
     });
     
+    // Click gallery item to toggle details (but not when clicking the image)
+    item.addEventListener('click', (e) => {
+      // Don't toggle if clicking on the image or links
+      if (e.target.closest('.gallery-image') || e.target.closest('a')) {
+        return;
+      }
+      item.classList.toggle('details-visible');
+    });
+    
     // Handle "view all images" for multi-image tweets
     const viewAllBtn = item.querySelector('.view-all-images');
     if (viewAllBtn) {
@@ -190,6 +199,15 @@ function showAllImages(tweet) {
     
     item.querySelector('.gallery-image').addEventListener('click', () => {
       openLightbox(imgUrl, tweet);
+    });
+    
+    // Click gallery item to toggle details (but not when clicking the image or links)
+    item.addEventListener('click', (e) => {
+      // Don't toggle if clicking on the image or links
+      if (e.target.closest('.gallery-image') || e.target.closest('a')) {
+        return;
+      }
+      item.classList.toggle('details-visible');
     });
     
     gallery.appendChild(item);

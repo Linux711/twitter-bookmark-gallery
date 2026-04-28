@@ -159,6 +159,7 @@ button:hover {
   overflow: hidden;
   transition: all 0.3s ease;
   border: 1px solid #2a2a2a;
+  cursor: pointer;
 }
 
 .gallery-item:hover {
@@ -184,6 +185,12 @@ button:hover {
 .gallery-info {
   padding: 10px;
   font-size: 12px;
+  display: none;
+  transition: all 0.3s ease;
+}
+
+.gallery-item.details-visible .gallery-info {
+  display: block;
 }
 
 .author {

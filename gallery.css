@@ -272,6 +272,7 @@ button:hover {
   overflow: hidden;
   transition: all 0.3s ease;
   border: 1px solid var(--border-color);
+  cursor: pointer;
 }
 
 .gallery-item:hover {
@@ -316,6 +317,11 @@ button:hover {
 .gallery-info {
   padding: 15px;
   transition: all 0.3s ease;
+  display: none;
+}
+
+.gallery-item.details-visible .gallery-info {
+  display: block;
 }
 
 body.compact-view .gallery-item .gallery-info {

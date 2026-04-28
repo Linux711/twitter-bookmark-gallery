@@ -160,6 +160,7 @@ async function autoScrollLoop(limit = MAX_BOOKMARKS) {
     const countBefore = document.querySelectorAll('article[data-testid="tweet"]').length;
 
     // Scroll one step
+    // const scrollStep = rand(500, 1000)
     window.scrollBy({ top: SCROLL_STEP, behavior: 'smooth' });
 
     // Wait for Twitter to inject new articles (or timeout)
