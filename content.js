@@ -148,15 +148,15 @@ function extractAndSend() {
 
 // ── Auto-scroll loop ─────────────────────────────────────────
 
-async function autoScrollLoop() {
+async function autoScrollLoop(limit = MAX_BOOKMARKS) {
   console.log(
-    `%c[Bookmarks] Auto-scroll started — target: ${MAX_BOOKMARKS} bookmarks`,
+    `%c[Bookmarks] Auto-scroll started — target: ${limit} bookmarks`,
     'font-weight:bold; color:#1d9bf0'
   );
 
   stallCount = 0;
 
-  while (scrollLoopActive && collectedIds.size < MAX_BOOKMARKS) {
+  while (scrollLoopActive && collectedIds.size < limit) {
     const countBefore = document.querySelectorAll('article[data-testid="tweet"]').length;
 
     // Scroll one step
@@ -170,7 +170,7 @@ async function autoScrollLoop() {
     const added = extractAndSend();
 
     console.log(
-      `[Bookmarks] Collected ${collectedIds.size} / ${MAX_BOOKMARKS}` +
+      `[Bookmarks] Collected ${collectedIds.size} / ${limit}` +
       (added > 0 ? ` (+${added} new)` : ' — no new this step')
     );
 
@@ -185,7 +185,7 @@ async function autoScrollLoop() {
       stallCount = 0;
     }
 
-    if (collectedIds.size >= MAX_BOOKMARKS) break;
+    if (collectedIds.size >= limit) break;
 
     // Human-like random pause before next scroll
     await sleep(rand(MIN_DELAY, MAX_DELAY));
@@ -205,7 +205,7 @@ async function autoScrollLoop() {
 
 // ── Start / stop ─────────────────────────────────────────────
 
-function startAutoExtraction() {
+function startAutoExtraction(limit = MAX_BOOKMARKS) {
   if (autoExtractRunning) return;
   autoExtractRunning = true;
   scrollLoopActive   = true;
@@ -213,7 +213,7 @@ function startAutoExtraction() {
   // Do an immediate extraction pass before the first scroll
   extractAndSend();
 
-  autoScrollLoop();
+  autoScrollLoop(limit);
   console.log('[Bookmarks] Auto-extraction enabled');
 }
 
@@ -245,7 +245,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     case 'START_AUTO_EXTRACT':
       localStorage.setItem(AUTO_EXTRACT_KEY, 'true');
-      startAutoExtraction();
+      // Use limit from popup if provided, otherwise fall back to the constant at the top
+      startAutoExtraction(message.maxBookmarks || MAX_BOOKMARKS);
       sendResponse({ success: true });
       break;
 

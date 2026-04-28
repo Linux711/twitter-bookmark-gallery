@@ -246,42 +246,82 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
 // ── Auto-extract toggle ──────────────────────────────────────
 //  The popup only sends messages. content.js owns the scroll loop.
 
-const autoExtractToggle = document.getElementById('autoExtractToggle');
+const autoExtractToggle  = document.getElementById('autoExtractToggle');
+const maxBookmarksInput  = document.getElementById('maxBookmarksInput');
+const stopBtn            = document.getElementById('stopBtn');
+
 autoExtractToggle.checked = localStorage.getItem(AUTO_EXTRACT_KEY) === 'true';
 
+// Persist the limit across popup opens
+const savedLimit = localStorage.getItem('maxBookmarks');
+if (savedLimit) maxBookmarksInput.value = savedLimit;
+
+function setRunningState(isRunning) {
+  stopBtn.disabled          = !isRunning;
+  autoExtractToggle.disabled = isRunning;
+  maxBookmarksInput.disabled = isRunning;
+}
+
 autoExtractToggle.addEventListener('change', async (e) => {
-  const isEnabled = e.target.checked;
+  const isEnabled    = e.target.checked;
+  const limit        = parseInt(maxBookmarksInput.value, 10) || 20;
   localStorage.setItem(AUTO_EXTRACT_KEY, String(isEnabled));
+  localStorage.setItem('maxBookmarks', String(limit));
 
   const [tab]     = await chrome.tabs.query({ active: true, currentWindow: true });
   const statusDiv = document.getElementById('status');
 
   if (!tab.url.includes('/bookmarks')) {
-    statusDiv.className   = 'error';
-    statusDiv.textContent = 'Please navigate to your Twitter/X bookmarks page to use auto-extract.';
+    statusDiv.className       = 'error';
+    statusDiv.textContent     = 'Please navigate to your Twitter/X bookmarks page to use auto-extract.';
     autoExtractToggle.checked = false;
     return;
   }
 
-  // Hand off to content.js — it runs the scroll loop
-  chrome.tabs.sendMessage(
-    tab.id,
-    { type: isEnabled ? 'START_AUTO_EXTRACT' : 'STOP_AUTO_EXTRACT' },
-    () => {
+  if (isEnabled) {
+    // Pass the limit along so content.js uses it instead of its hardcoded constant
+    chrome.tabs.sendMessage(
+      tab.id,
+      { type: 'START_AUTO_EXTRACT', maxBookmarks: limit },
+      () => {
+        statusDiv.className   = 'success';
+        statusDiv.textContent = `✅ Auto-extract started! Collecting up to ${limit} bookmarks.`;
+        setRunningState(true);
+      }
+    );
+  } else {
+    chrome.tabs.sendMessage(tab.id, { type: 'STOP_AUTO_EXTRACT' }, () => {
       statusDiv.className   = 'success';
-      statusDiv.textContent = isEnabled
-        ? '✅ Auto-extract enabled! Page will scroll automatically.'
-        : 'Auto-extract disabled.';
-    }
-  );
+      statusDiv.textContent = 'Auto-extract disabled.';
+      setRunningState(false);
+    });
+  }
 });
 
-// On popup open, sync the toggle with what content.js is actually doing
+// ── Emergency stop button ────────────────────────────────────
+
+stopBtn.addEventListener('click', async () => {
+  const [tab]     = await chrome.tabs.query({ active: true, currentWindow: true });
+  const statusDiv = document.getElementById('status');
+
+  chrome.tabs.sendMessage(tab.id, { type: 'STOP_AUTO_EXTRACT' }, () => {
+    autoExtractToggle.checked = false;
+    localStorage.setItem(AUTO_EXTRACT_KEY, 'false');
+    statusDiv.className   = 'success';
+    statusDiv.textContent = '⏹ Auto-extract stopped.';
+    setRunningState(false);
+  });
+});
+
+// On popup open, sync the toggle and button states with content.js
 (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab.url.includes('/bookmarks')) {
     chrome.tabs.sendMessage(tab.id, { type: 'CHECK_AUTO_EXTRACT' }, (response) => {
-      if (response) autoExtractToggle.checked = response.running;
+      if (response) {
+        autoExtractToggle.checked = response.running;
+        setRunningState(response.running);
+      }
     });
   }
 })();
@@ -293,6 +333,7 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'AUTO_EXTRACT_FINISHED') {
     autoExtractToggle.checked = false;
     localStorage.setItem(AUTO_EXTRACT_KEY, 'false');
+    setRunningState(false);
 
     const statusDiv       = document.getElementById('status');
     statusDiv.className   = 'success';
