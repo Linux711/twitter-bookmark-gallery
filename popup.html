@@ -16,35 +16,30 @@
       </div>
       <input type="file" id="importFile" accept=".json" style="display: none;">
     </div>
- 
+
     <div id="status"></div>
- 
-    <div class="auto-extract-toggle">
-      <label>
-        <input type="checkbox" id="autoExtractToggle">
-        <span>Auto-extract while scrolling</span>
-      </label>
-      <div class="auto-extract-controls">
-        <label for="maxBookmarksInput">Limit:</label>
-        <input
-          type="number"
-          id="maxBookmarksInput"
-          value="20"
-          min="1"
-          max="1000"
-          step="10"
-        >
-        <button id="stopBtn" disabled>⏹ Stop</button>
-      </div>
+
+    <div class="auto-extract-controls">
+      <label for="maxBookmarksInput">Limit:</label>
+      <input
+        type="number"
+        id="maxBookmarksInput"
+        value="20"
+        min="1"
+        max="1000"
+        step="10"
+      >
+      <button id="startBtn">▶ Start</button>
+      <button id="stopBtn" disabled>⏹ Stop</button>
     </div>
- 
+
     <div id="stats"></div>
- 
+
     <div class="view-toggle">
       <button id="viewCurrentBtn" class="active">Current Extract</button>
       <button id="viewAllBtn">All Saved ({count})</button>
     </div>
- 
+
     <div id="gallery"></div>
   </div>
   <script src="popup.js"></script>

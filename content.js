@@ -7,6 +7,7 @@ const AUTO_EXTRACT_KEY = 'twitterBookmarksAutoExtract';
 
 // ── Tunable constants ────────────────────────────────────────
 const MAX_BOOKMARKS  = 20;    // stop after collecting this many bookmarked tweets
+const SCROLL_STEP    = 600;   // px to scroll each step
 const MIN_DELAY      = 1000;  // ms — minimum pause between scrolls
 const MAX_DELAY      = 3000;  // ms — maximum pause between scrolls
 const STALL_LIMIT    = 5;     // consecutive scrolls with no new content before giving up
@@ -159,8 +160,7 @@ async function autoScrollLoop(limit = MAX_BOOKMARKS) {
     const countBefore = document.querySelectorAll('article[data-testid="tweet"]').length;
 
     // Scroll one step
-    const scrollStep = rand(600, 900); // Randomize scroll step a bit for human-like behavior
-    window.scrollBy({ top: scrollStep, behavior: 'smooth' });
+    window.scrollBy({ top: SCROLL_STEP, behavior: 'smooth' });
 
     // Wait for Twitter to inject new articles (or timeout)
     const countAfter = await waitForNewContent(countBefore);

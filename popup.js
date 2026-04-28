@@ -4,10 +4,10 @@
 //  Does NOT inject its own extraction logic into the page.
 // ============================================================
 
-const STORAGE_KEY     = 'twitterBookmarks';
+const STORAGE_KEY      = 'twitterBookmarks';
 const AUTO_EXTRACT_KEY = 'twitterBookmarksAutoExtract';
 
-let currentView      = 'current';
+let currentView       = 'current';
 let lastExtractedData = [];
 
 // ── Storage helpers ──────────────────────────────────────────
@@ -168,8 +168,8 @@ document.getElementById('viewAllBtn').addEventListener('click', async () => {
   document.getElementById('viewAllBtn').classList.add('active');
   document.getElementById('viewCurrentBtn').classList.remove('active');
 
-  const savedData  = await loadSavedData();
-  const allTweets  = Object.values(savedData);
+  const savedData = await loadSavedData();
+  const allTweets = Object.values(savedData);
   renderGallery(allTweets, true);
 });
 
@@ -197,22 +197,22 @@ document.getElementById('importBtn').addEventListener('click', () => {
 });
 
 document.getElementById('importFile').addEventListener('change', async (e) => {
-  const file      = e.target.files[0];
+  const file = e.target.files[0];
   if (!file) return;
 
   const statusDiv       = document.getElementById('status');
   statusDiv.className   = 'loading';
   statusDiv.textContent = 'Importing data...';
 
-  const reader    = new FileReader();
-  reader.onload   = async (event) => {
+  const reader  = new FileReader();
+  reader.onload = async (event) => {
     try {
       const importedData = JSON.parse(event.target.result);
 
       if (typeof importedData !== 'object') throw new Error('Invalid data format');
 
       const existingData = await loadSavedData();
-      let newCount = 0;
+      let newCount     = 0;
       let updatedCount = 0;
 
       Object.keys(importedData).forEach(tweetId => {
@@ -243,102 +243,75 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
   reader.readAsText(file);
 });
 
-// ── Auto-extract toggle ──────────────────────────────────────
+// ── Auto-extract Start / Stop ────────────────────────────────
 //  The popup only sends messages. content.js owns the scroll loop.
 
-const autoExtractToggle  = document.getElementById('autoExtractToggle');
-const maxBookmarksInput  = document.getElementById('maxBookmarksInput');
-const stopBtn            = document.getElementById('stopBtn');
+const maxBookmarksInput = document.getElementById('maxBookmarksInput');
+const startBtn          = document.getElementById('startBtn');
+const stopBtn           = document.getElementById('stopBtn');
 
-autoExtractToggle.checked = localStorage.getItem(AUTO_EXTRACT_KEY) === 'true';
-
-// Persist the limit across popup opens
+// Restore saved limit across popup opens
 const savedLimit = localStorage.getItem('maxBookmarks');
 if (savedLimit) maxBookmarksInput.value = savedLimit;
 
 function setRunningState(isRunning) {
-  stopBtn.disabled          = !isRunning;
-  autoExtractToggle.disabled = isRunning;
+  startBtn.disabled          = isRunning;
+  stopBtn.disabled           = !isRunning;
   maxBookmarksInput.disabled = isRunning;
 }
 
-autoExtractToggle.addEventListener('change', async (e) => {
-  const isEnabled    = e.target.checked;
-  const limit        = parseInt(maxBookmarksInput.value, 10) || 20;
-  localStorage.setItem(AUTO_EXTRACT_KEY, String(isEnabled));
-  localStorage.setItem('maxBookmarks', String(limit));
-
+startBtn.addEventListener('click', async () => {
+  const limit     = parseInt(maxBookmarksInput.value, 10) || 20;
   const [tab]     = await chrome.tabs.query({ active: true, currentWindow: true });
   const statusDiv = document.getElementById('status');
 
+  localStorage.setItem('maxBookmarks', String(limit));
+
   if (!tab.url.includes('/bookmarks')) {
-    statusDiv.className       = 'error';
-    statusDiv.textContent     = 'Please navigate to your Twitter/X bookmarks page to use auto-extract.';
-    autoExtractToggle.checked = false;
+    statusDiv.className   = 'error';
+    statusDiv.textContent = 'Please navigate to your Twitter/X bookmarks page to use auto-extract.';
     return;
   }
 
-  if (isEnabled) {
-    // Pass the limit along so content.js uses it instead of its hardcoded constant
-    chrome.tabs.sendMessage(
-      tab.id,
-      { type: 'START_AUTO_EXTRACT', maxBookmarks: limit },
-      () => {
-        statusDiv.className   = 'success';
-        statusDiv.textContent = `✅ Auto-extract started! Collecting up to ${limit} bookmarks.`;
-        setRunningState(true);
-      }
-    );
-  } else {
-    chrome.tabs.sendMessage(tab.id, { type: 'STOP_AUTO_EXTRACT' }, () => {
+  chrome.tabs.sendMessage(
+    tab.id,
+    { type: 'START_AUTO_EXTRACT', maxBookmarks: limit },
+    () => {
       statusDiv.className   = 'success';
-      statusDiv.textContent = 'Auto-extract disabled.';
-      setRunningState(false);
-    });
-  }
+      statusDiv.textContent = `✅ Auto-extract started! Collecting up to ${limit} bookmarks.`;
+      setRunningState(true);
+    }
+  );
 });
-
-// ── Emergency stop button ────────────────────────────────────
 
 stopBtn.addEventListener('click', async () => {
   const [tab]     = await chrome.tabs.query({ active: true, currentWindow: true });
   const statusDiv = document.getElementById('status');
 
   chrome.tabs.sendMessage(tab.id, { type: 'STOP_AUTO_EXTRACT' }, () => {
-    autoExtractToggle.checked = false;
-    localStorage.setItem(AUTO_EXTRACT_KEY, 'false');
     statusDiv.className   = 'success';
     statusDiv.textContent = '⏹ Auto-extract stopped.';
     setRunningState(false);
   });
 });
 
-// On popup open, sync the toggle and button states with content.js
+// On popup open, sync button states with what content.js is actually doing
 (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab.url.includes('/bookmarks')) {
+  if (tab?.url?.includes('/bookmarks')) {
     chrome.tabs.sendMessage(tab.id, { type: 'CHECK_AUTO_EXTRACT' }, (response) => {
-      if (response) {
-        autoExtractToggle.checked = response.running;
-        setRunningState(response.running);
-      }
+      if (response) setRunningState(response.running);
     });
   }
 })();
 
-// ── Auto-extract finished listener ───────────────────────────
-//  content.js sends this when the scroll loop completes naturally
-
+// content.js sends this when the scroll loop completes naturally
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'AUTO_EXTRACT_FINISHED') {
-    autoExtractToggle.checked = false;
-    localStorage.setItem(AUTO_EXTRACT_KEY, 'false');
     setRunningState(false);
-
     const statusDiv       = document.getElementById('status');
     statusDiv.className   = 'success';
     statusDiv.textContent = `✅ Auto-extract complete! Collected ${message.total} bookmarks.`;
-
     updateStats();
   }
 });
