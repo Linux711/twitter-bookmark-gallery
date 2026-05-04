@@ -108,7 +108,10 @@ function renderGallery(tweets) {
     return;
   }
   
-  tweets.forEach(tweet => {
+  // Shuffle the tweets array for randomization
+  const shuffledTweets = [...tweets].sort(() => Math.random() - 0.5);
+  
+  shuffledTweets.forEach(tweet => {
     const item = document.createElement('div');
     item.className = 'gallery-item';
     

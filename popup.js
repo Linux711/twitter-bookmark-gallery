@@ -49,7 +49,10 @@ function renderGallery(tweets, showSavedBadge = false) {
     return;
   }
 
-  tweets.forEach(tweet => {
+  // Shuffle the tweets array for randomization
+  const shuffledTweets = [...tweets].sort(() => Math.random() - 0.5);
+
+  shuffledTweets.forEach(tweet => {
     tweet.images.forEach(imgUrl => {
       const item = document.createElement('div');
       item.className = 'gallery-item';
