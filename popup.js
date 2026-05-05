@@ -305,7 +305,16 @@ stopBtn.addEventListener('click', async () => {
   const [tab]     = await chrome.tabs.query({ active: true, currentWindow: true });
   const statusDiv = document.getElementById('status');
 
-  chrome.tabs.sendMessage(tab.id, { type: 'STOP_AUTO_EXTRACT' }, () => {
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => {
+      if (window.stopAutoExtraction) {
+        window.stopAutoExtraction();
+      } else {
+        console.warn("stopAutoExtraction not found");
+      }
+    }
+  }, () => {
     statusDiv.className   = 'success';
     statusDiv.textContent = '⏹ Auto-extract stopped.';
     setRunningState(false);
