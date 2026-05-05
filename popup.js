@@ -285,15 +285,20 @@ startBtn.addEventListener('click', async () => {
     return;
   }
 
-  chrome.tabs.sendMessage(
-    tab.id,
-    { type: 'START_AUTO_EXTRACT', maxBookmarks: limit },
-    () => {
-      statusDiv.className   = 'success';
-      statusDiv.textContent = `✅ Auto-extract started! Collecting up to ${limit} bookmarks.`;
-      setRunningState(true);
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => {
+      if (window.startAutoExtraction) {
+        window.startAutoExtraction();
+      } else {
+        console.warn("startAutoExtraction not found");
+      }
     }
-  );
+  }, () => {
+    statusDiv.className   = 'success';
+    statusDiv.textContent = `✅ Auto-extract started! Collecting up to ${limit} bookmarks.`;
+    setRunningState(true);
+  });
 });
 
 stopBtn.addEventListener('click', async () => {

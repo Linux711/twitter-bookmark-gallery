@@ -225,6 +225,10 @@ function stopAutoExtraction() {
   console.log('[Bookmarks] Auto-extraction stopped');
 }
 
+// Expose extraction functions globally for scripting injection
+window.startAutoExtraction = startAutoExtraction;
+window.stopAutoExtraction = stopAutoExtraction;
+
 // ── Lifecycle & messaging ────────────────────────────────────
 
 function checkAndStartAutoExtract() {
